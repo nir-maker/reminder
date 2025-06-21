@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📱 קביעת תזכורת עם צלצול</title>
+  <!-- גופן מותאם עברית -->
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Reset בסיסי */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      height: 100%;
+    }
+    body {
+      font-family: 'Assistant', sans-serif;
+      direction: rtl;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .container {
+      background: #fff;
+      width: 100%;
+      max-width: 380px;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    /* אפקט גל */
+    .container::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at center, rgba(102,126,234,0.3), transparent 70%);
+      animation: rotate 8s linear infinite;
+    }
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    h1 {
+      position: relative;
+      font-size: 1.6rem;
+      margin-bottom: 1.5rem;
+      color: #4a4a4a;
+      z-index: 1;
+    }
+    label {
+      position: relative;
+      display: block;
+      text-align: right;
+      margin: 0.75rem 0 0.25rem;
+      font-size: 1rem;
+      color: #555;
+      z-index: 1;
+    }
+    input[type="date"],
+    input[type="time"] {
+      position: relative;
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 0.25rem;
+      font-size: 1rem;
+      border: 2px solid #eee;
+      border-radius: 0.75rem;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      z-index: 1;
+    }
+    input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 8px rgba(102,126,234,0.5);
+    }
+    #setBtn {
+      position: relative;
+      margin-top: 1.75rem;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      background-color: #667eea;
+      border: none;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+      transition: transform 0.2s, background-color 0.3s;
+      z-index: 1;
+    }
+    #setBtn:hover {
+      background-color: #5a67d8;
+      transform: translateY(-2px);
+    }
+    #status {
+      position: relative;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      min-height: 1.2em;
+      z-index: 1;
+    }
+    .error { color: #e53e3e; }
+    .success { color: #38a169; }
+
+    /* תגובתיות נמוכה לעיסוי מסך קטן */
+    @media (max-width: 320px) {
+      h1 { font-size: 1.4rem; }
+      input, #setBtn { font-size: 0.95rem; padding: 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⏰ קבע תזכורת עם צלצול</h1>
+
+    <label for="datePicker">בחר תאריך:</label>
+    <input type="date" id="datePicker" required>
+
+    <label for="timePicker">בחר שעה:</label>
+    <input type="time" id="timePicker" required>
+
+    <button id="setBtn">קבע תזכורת</button>
+    <div id="status"></div>
+  </div>
+
+  <audio id="alarmAudio" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+
+  <script>
+    function toTimestamp(dateStr, timeStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const [h, min] = timeStr.split(':').map(Number);
+      return new Date(y, m - 1, d, h, min).getTime();
+    }
+
+    document.getElementById('setBtn').addEventListener('click', () => {
+      const dateVal = document.getElementById('datePicker').value;
+      const timeVal = document.getElementById('timePicker').value;
+      const statusEl = document.getElementById('status');
+      statusEl.className = '';
+
+      if (!dateVal || !timeVal) {
+        statusEl.textContent = 'נא לבחור תאריך ושעה תקינים.';
+        statusEl.classList.add('error');
+        return;
+      }
+
+      const now = Date.now();
+      const target = toTimestamp(dateVal, timeVal);
+      const delay = target - now;
+
+      if (delay <= 0) {
+        statusEl.textContent = 'התאריך או השעה הם בעבר.';
+        statusEl.classList.add('error');
+        return;
+      }
+
+      statusEl.textContent = `תזכורת נקבעה ל־${dateVal} ב־${timeVal}`;
+      statusEl.classList.add('success');
+
+      setTimeout(() => {
+        const audio = document.getElementById('alarmAudio');
+        audio.play().catch(() => console.warn('Playback blocked'));
+        alert('🔔 הגיע זמן התזכורת!');
+      }, delay);
+    });
+  </script>
+</body>
+</html>
