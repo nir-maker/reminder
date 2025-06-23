@@ -15,7 +15,7 @@
       display: flex; align-items: center; justify-content: center; padding: 1rem;
     }
     .container {
-      background: #fff; width: 100%; max-width: 380px; padding: 2rem;
+      background: #fff; width: 100%; max-width: 400px; padding: 2rem;
       border-radius: 1rem; box-shadow: 0 12px 30px rgba(0,0,0,0.2); text-align: center; position: relative;
     }
     .container::before {
@@ -27,22 +27,26 @@
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     h1 { position: relative; font-size: 1.6rem; margin-bottom: 1.5rem; color: #4a4a4a; z-index: 1; }
     label { position: relative; display: block; text-align: right; margin: 0.75rem 0 0.25rem; font-size: 1rem; z-index: 1; }
-    input { position: relative; width: 100%; padding: 0.75rem; margin-top: 0.25rem; font-size: 1rem;
+    input, select, button { position: relative; width: 100%; padding: 0.75rem; font-size: 1rem;
       border: 2px solid #eee; border-radius: 0.75rem; outline: none; transition: border-color 0.3s, box-shadow 0.3s; z-index: 1; }
-    input:focus { border-color: #667eea; box-shadow: 0 0 8px rgba(102,126,234,0.5); }
+    input:focus, select:focus { border-color: #667eea; box-shadow: 0 0 8px rgba(102,126,234,0.5); }
     #setBtn {
-      position: relative; margin-top: 1.75rem; width: 100%; padding: 0.75rem;
-      font-size: 1.1rem; font-weight: 700; color: #fff; background-color: #667eea;
-      border: none; border-radius: 0.75rem; cursor: pointer; box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-      transition: transform 0.2s, background-color 0.3s; z-index: 1;
+      margin-top: 1.75rem; font-weight: 700; color: #fff; background-color: #667eea;
+      border: none; cursor: pointer; box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+      transition: transform 0.2s, background-color 0.3s;
     }
     #setBtn:hover { background-color: #5a67d8; transform: translateY(-2px); }
-    #status { position: relative; margin-top: 1rem; font-size: 0.95rem; font-weight: 500; min-height: 1.2em; z-index: 1; }
+    #previewBtn {
+      margin-top: 0.5rem; background-color: #38a169; color: #fff; border: none; cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    #previewBtn:hover { background-color: #2f855a; }
+    #status { margin-top: 1rem; font-size: 0.95rem; font-weight: 500; min-height: 1.2em; }
     .error { color: #e53e3e; }
     .success { color: #38a169; }
     @media (max-width: 320px) {
       h1 { font-size: 1.4rem; }
-      input, #setBtn { font-size: 0.95rem; padding: 0.65rem; }
+      input, select, #setBtn, #previewBtn { font-size: 0.95rem; padding: 0.65rem; }
     }
   </style>
 </head>
@@ -56,21 +60,30 @@
     <label for="timePicker">בחר שעה:</label>
     <input type="time" id="timePicker" required>
 
+    <label for="soundPicker">בחר צליל התראה:</label>
+    <select id="soundPicker">
+      <option value="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg">ברירת מחדל (שעון אליה)</option>
+      <option value="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg">שעון דיגיטלי</option>
+      <option value="https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg">טרומפה</option>
+      <option value="https://actions.google.com/sounds/v1/alarms/winding_alarm_clock.ogg">שעון מכני</option>
+    </select>
+    <button id="previewBtn">▶ הקשב לצליל</button>
+
     <button id="setBtn">קבע תזכורת</button>
     <div id="status"></div>
   </div>
 
-  <audio id="alarmAudio" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+  <audio id="alarmAudio" preload="auto"></audio>
 
   <script>
-    // פונקציה להמרת תאריך+שעה ל־timestamp
+    // המר תאריך+שעה ל־timestamp
     function toTimestamp(dateStr, timeStr) {
       const [y, m, d] = dateStr.split('-').map(Number);
-      const [h, min] = timeStr.split(':').map(Number);
+      const [h, min]    = timeStr.split(':').map(Number);
       return new Date(y, m - 1, d, h, min).getTime();
     }
 
-    // בקשת הרשאה להתראות
+    // בקשת הרשאה
     function requestNotificationPermission() {
       if ('Notification' in window) {
         Notification.requestPermission().then(permission => {
@@ -83,14 +96,24 @@
     function showNotification() {
       new Notification("🔔 תזכורת", {
         body: "הגיע הזמן שהגדרת!",
-        // icon: 'icon.png'
       });
     }
+
+    const audio      = document.getElementById('alarmAudio');
+    const soundPicker= document.getElementById('soundPicker');
+    const previewBtn = document.getElementById('previewBtn');
+
+    // ניגון דוגמה של הצליל הנבחר
+    previewBtn.addEventListener('click', () => {
+      audio.src = soundPicker.value;
+      audio.currentTime = 0;
+      audio.play().catch(() => console.warn('Playback blocked'));
+    });
 
     document.getElementById('setBtn').addEventListener('click', () => {
       const dateVal = document.getElementById('datePicker').value;
       const timeVal = document.getElementById('timePicker').value;
-      const statusEl = document.getElementById('status');
+      const statusEl= document.getElementById('status');
       statusEl.className = '';
 
       if (!dateVal || !timeVal) {
@@ -99,9 +122,9 @@
         return;
       }
 
-      const now = Date.now();
+      const now    = Date.now();
       const target = toTimestamp(dateVal, timeVal);
-      const delay = target - now;
+      const delay  = target - now;
 
       if (delay <= 0) {
         statusEl.textContent = 'התאריך או השעה הם בעבר.';
@@ -109,17 +132,22 @@
         return;
       }
 
-      // בקשת הרשאה אם עדיין לא
+      // אם לא ביקשנו עדיין – מבקשים הרשאה
       if (Notification.permission === 'default') {
         requestNotificationPermission();
       }
+
+      // נשמור את הצליל הנבחר להפעלה בתזכורת
+      const chosenSound = soundPicker.value;
 
       statusEl.textContent = `תזכורת נקבעה ל־${dateVal} ב־${timeVal}`;
       statusEl.classList.add('success');
 
       setTimeout(() => {
-        const audio = document.getElementById('alarmAudio');
+        audio.src = chosenSound;
+        audio.currentTime = 0;
         audio.play().catch(() => console.warn('Playback blocked'));
+
         if (Notification.permission === 'granted') {
           showNotification();
         } else {
@@ -128,7 +156,6 @@
       }, delay);
     });
 
-    // אפשר לבקש הרשאה גם מיד עם טעינת הדף
     document.addEventListener('DOMContentLoaded', () => {
       requestNotificationPermission();
     });
